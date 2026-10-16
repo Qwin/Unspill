@@ -1,4 +1,5 @@
 import io
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -111,5 +112,6 @@ class StorageTests(unittest.TestCase):
             self.store.put(BrokenStream())
         self.assertEqual(list(self.store.objects.iterdir()), [])
 
+    @unittest.skipIf(os.name == "nt", "Windows uses inherited ACLs instead of POSIX modes")
     def test_private_store_permissions(self):
         self.assertEqual(self.store.path.stat().st_mode & 0o777, 0o700)

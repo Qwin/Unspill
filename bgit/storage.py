@@ -1,7 +1,6 @@
 """Durable, content-addressed storage. No expiry or deletion API."""
 
 from contextlib import contextmanager
-import fcntl
 import hashlib
 import json
 import os
@@ -10,17 +9,11 @@ import re
 import tempfile
 import zlib
 
+from .platform import LockUnavailable, exclusive_lock, sync_dir
+
 
 class BGitError(Exception):
     """An actionable error suitable for display without a traceback."""
-
-
-def sync_dir(path: Path) -> None:
-    fd = os.open(path, os.O_RDONLY)
-    try:
-        os.fsync(fd)
-    finally:
-        os.close(fd)
 
 
 def atomic_json(path: Path, value: dict, *, immutable: bool = False) -> None:
@@ -69,13 +62,10 @@ class Store:
     def lock(self):
         with (self.path / "lock").open("a+b") as stream:
             try:
-                fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError as exc:
+                with exclusive_lock(stream):
+                    yield
+            except LockUnavailable as exc:
                 raise BGitError("Another BGit operation is running.") from exc
-            try:
-                yield
-            finally:
-                fcntl.flock(stream, fcntl.LOCK_UN)
 
     def object_path(self, digest: str) -> Path:
         if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):

@@ -28,6 +28,7 @@ class RepoCase(unittest.TestCase):
         self.environment.start()
         self.addCleanup(self.environment.stop)
         self.git("init", "-b", "main")
+        self.git("config", "core.autocrlf", "false")
         self.write("tracked.txt", "original\n")
         self.git("add", ".")
         self.git("commit", "-m", "initial")
@@ -43,7 +44,7 @@ class RepoCase(unittest.TestCase):
         if isinstance(value, bytes):
             target.write_bytes(value)
         else:
-            target.write_text(value)
+            target.write_text(value, encoding="utf-8", newline="")
         return target
 
     def protected(self, *args):

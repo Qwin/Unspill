@@ -19,7 +19,7 @@ class CliTests(RepoCase):
         self.assertIn("recover", result.stdout)
 
     def test_version(self):
-        self.assertIn("0.1.0", self.cli("--version").stdout)
+        self.assertIn("0.2.0", self.cli("--version").stdout)
 
     def test_no_command_shows_help(self):
         self.assertIn("usage:", self.cli().stdout)

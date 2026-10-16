@@ -42,6 +42,7 @@ def main():
 
     print(f"Demo files and permanent history: {base}", flush=True)
     command("git", "init", "-b", "main", quiet=True)
+    command("git", "config", "core.autocrlf", "false")
     tracked = project / "story.txt"
     tracked.write_text("committed\n")
     (project / ".gitignore").write_text("local.env\n")

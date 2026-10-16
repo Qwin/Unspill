@@ -12,6 +12,7 @@ import time
 import uuid
 
 from .storage import BGitError, Store, atomic_json, read_json, sync_dir
+from .platform import default_home, sync_file, windows_path_is_safe
 
 
 PROTECTED = frozenset({
@@ -53,8 +54,11 @@ def record_id(after: int = 0) -> str:
 
 def remove_tree(root: Path) -> None:
     """Remove a captured tree even when its directories are read-only."""
-    for directory, children, _ in os.walk(root, followlinks=False):
+    for directory, children, files in os.walk(root, followlinks=False):
         os.chmod(directory, 0o700)
+        if os.name == "nt":
+            for filename in files:
+                os.chmod(Path(directory) / filename, 0o600)
     shutil.rmtree(root)
 
 
@@ -72,6 +76,8 @@ def inventory(root: Path) -> dict:
         for path in sorted(directory.iterdir()):
             relative = path.relative_to(root).as_posix()
             info = path.lstat()
+            if os.name == "nt" and getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT:
+                raise BGitError(f"Windows reparse points (including junctions/symlinks) are unsupported: {relative}")
             if info.st_dev != device:
                 raise BGitError(f"Mounted filesystems are unsupported: {relative}")
             if path.name == ".git" and relative != ".git":
@@ -94,7 +100,7 @@ def inventory(root: Path) -> dict:
 class Repository:
     def __init__(self, root: Path, home: Path | None = None):
         self.root = root.resolve()
-        base = home or Path(os.environ.get("BGIT_HOME", "~/.local/share/bgit")).expanduser()
+        base = home or Path(os.environ.get("BGIT_HOME", str(default_home()))).expanduser()
         base = base.resolve()
         if base == self.root or base.is_relative_to(self.root) or self.root.is_relative_to(base):
             raise BGitError("BGIT_HOME must be outside the repository, and cannot contain it.")
@@ -158,7 +164,7 @@ class Repository:
                 entry.update(type="symlink", target=os.readlink(path))
             else:
                 # O_NOFOLLOW closes the most common symlink substitution race.
-                fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+                fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0))
                 with os.fdopen(fd, "rb") as stream:
                     if fingerprint(os.fstat(stream.fileno())) != signature:
                         raise BGitError(f"File changed during snapshot: {relative}")
@@ -200,6 +206,8 @@ class Repository:
                 raise BGitError("Unsafe path in snapshot.")
             if not isinstance(entry, dict) or entry.get("type") not in {"file", "directory", "symlink"}:
                 raise BGitError("Invalid snapshot entry.")
+            if os.name == "nt" and (not windows_path_is_safe(name) or entry["type"] == "symlink"):
+                raise BGitError("Snapshot contains a path unsupported on Windows.")
             if type(entry.get("mode")) is not int or not 0 <= entry["mode"] <= 0o7777:
                 raise BGitError("Invalid file mode.")
             if entry["type"] == "file":
@@ -283,6 +291,8 @@ class Repository:
         inventory(self.root)
         for path in self.root.iterdir():
             if path.is_symlink() or not path.is_dir():
+                if os.name == "nt":
+                    os.chmod(path, 0o600)
                 path.unlink()
             else:
                 remove_tree(path)
@@ -298,8 +308,7 @@ class Repository:
                 shutil.copy2(path, target)
         for name, signature in inventory(self.root).items():
             if stat.S_ISREG(signature[0]):
-                with (self.root / name).open("rb") as stream:
-                    os.fsync(stream.fileno())
+                sync_file(self.root / name)
         for name, signature in sorted(inventory(self.root).items(), reverse=True):
             if stat.S_ISDIR(signature[0]):
                 sync_dir(self.root / name)
