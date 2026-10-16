@@ -1,6 +1,6 @@
 # Roadmap
 
-## Implemented in 0.1 alpha
+## Implemented in the current alpha
 
 - Local immutable snapshots with no automatic expiry.
 - Independent, compressed and deduplicated contents outside the repository.
@@ -8,6 +8,10 @@
 - Full restoration with a pre-restore checkpoint and recovery journal.
 - Export one file, a directory, or a complete snapshot into a new location.
 - Recovery tests against real Git and storage/CLI tests.
+
+- Windows support and native downloads for four platform/architecture targets.
+- Descriptive timelines, stable numbered choices, search, text diffs, file history,
+  restoration previews, and guided recovery.
 
 ## Reliability before wider adoption
 
@@ -20,8 +24,8 @@
 
 ## Workflow expansion
 
-- Linked worktrees, submodules, partial clones, sparse checkouts, and Windows.
-- A visual timeline, actual snapshot diffs, and natural-language time selection.
+- Linked worktrees, submodules, partial clones, sparse checkouts.
+- A graphical timeline and natural-language time selection.
 - Background snapshots and editor/agent checkpoints with explicit coverage status.
 - In-place selective restore and named alternate histories.
 

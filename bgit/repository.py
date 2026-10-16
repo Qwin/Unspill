@@ -3,6 +3,7 @@
 from datetime import datetime, timezone
 import hashlib
 import os
+import re
 from pathlib import Path, PurePosixPath
 import shutil
 import stat
@@ -158,10 +159,50 @@ class Repository:
         if any(entry.startswith(b"160000 ") for entry in result.stdout.split(b"\0")):
             raise BGitError("Submodules are unsupported.")
 
+    def describe(self) -> dict:
+        """Read descriptive Git state without letting status refresh the index."""
+        branch = git(self.root, "symbolic-ref", "--quiet", "--short", "HEAD")
+        commit = git(self.root, "log", "-1", "--format=%H%x00%s").stdout.decode("utf-8", "replace").strip()
+        parts = commit.split("\0", 1)
+        changes = []
+        records = git(self.root, "status", "--porcelain=v1", "-z", "--untracked-files=all").stdout.split(b"\0")
+        index = 0
+        while index < len(records):
+            record = records[index]
+            index += 1
+            if not record:
+                continue
+            status = record[:2].decode("ascii")
+            changes.append({"status": status, "path": os.fsdecode(record[3:])})
+            if "R" in status or "C" in status:
+                index += 1  # porcelain -z includes the original name separately.
+        return {
+            "branch": branch.stdout.decode("utf-8", "replace").strip() if branch.returncode == 0 else "(detached HEAD)",
+            "commit": parts[0] or None, "subject": parts[1] if len(parts) == 2 else "(no commits yet)",
+            "changes": changes,
+            "stashes": git(self.root, "stash", "list", "--format=%gs").stdout.decode("utf-8", "replace").splitlines(),
+        }
+
+    def action_description(self, args: list[str]) -> str:
+        """Keep known modes and resolvable refs, never arbitrary argument text."""
+        words = ["git", args[0]]
+        flags = {"--hard", "--soft", "--mixed", "--merge", "--keep", "--abort", "--continue", "--skip", "-fd", "-fdx", "-f", "-d", "-x", "-D", "-d"}
+        for arg in args[1:]:
+            if arg in flags:
+                words.append(arg)
+            elif args[0] == "stash" and arg in {"clear", "drop", "pop", "push", "apply", "store", "branch"}:
+                words.append(arg)
+            elif args[0] in {"reset", "rebase", "merge", "switch", "checkout", "branch", "cherry-pick", "revert"}:
+                if len(arg) <= 128 and re.fullmatch(r"[\w./~^@{}-]+", arg) and not arg.startswith("-"):
+                    if git(self.root, "rev-parse", "--verify", "--end-of-options", arg + "^{commit}").returncode == 0:
+                        words.append(arg)
+        return " ".join(words)
+
     def snapshot(self, label: str, *, kind: str = "manual", source: str | None = None) -> dict:
         self.require_idle()
         self.validate_repository()
         before = inventory(self.root)
+        context = self.describe()
         entries = {}
         for relative, signature in before.items():
             path = self.root / relative
@@ -190,7 +231,7 @@ class Repository:
         snapshot = {
             "version": 1, "id": record_id(int(previous.split("-")[0])),
             "created": datetime.now(timezone.utc).isoformat(),
-            "label": label, "kind": kind, "source": source, "entries": entries,
+            "label": label, "kind": kind, "source": source, "entries": entries, "context": context,
         }
         atomic_json(self.store.snapshots / (snapshot["id"] + ".json"), snapshot, immutable=True)
         return snapshot
@@ -199,6 +240,12 @@ class Repository:
         return [self.load(path.stem) for path in sorted(self.store.snapshots.glob("*.json"))]
 
     def load(self, selector: str) -> dict:
+        if selector.startswith("@") and selector[1:].isdigit():
+            records = sorted(self.store.snapshots.glob("*.json"))
+            number = int(selector[1:])
+            if not 1 <= number <= len(records):
+                raise BGitError("Snapshot number is outside the timeline.")
+            selector = records[number - 1].stem
         if not selector or any(c not in "0123456789abcdef-" for c in selector):
             raise BGitError("Use a snapshot ID or unique ID prefix from bgit timeline.")
         matches = list(self.store.snapshots.glob(selector + "*.json"))
@@ -343,10 +390,16 @@ class Repository:
             raise BGitError("Unsupported Git command. Use a supported built-in subcommand; aliases/global Git options are not accepted.")
         self.validate_repository()
         if args[0] in PROTECTED:
-            # Do not store arguments, which may contain credentials or commit messages.
-            snapshot = self.snapshot(f"Before git {args[0]}", kind="before-command")
+            snapshot = self.snapshot(f"Before {self.action_description(args)}", kind="before-command")
             print(f"BGit checkpoint: {snapshot['id']}", flush=True)
         result = subprocess.run(
             ["git", "-c", "gc.auto=0", "-c", "maintenance.auto=false", *args], cwd=cwd,
         )
+        if args[0] in PROTECTED:
+            conflicts = bool(git(self.root, "ls-files", "--unmerged").stdout)
+            outcome = "completed" if result.returncode == 0 else ("stopped on conflicts" if conflicts else "failed")
+            atomic_json(self.store.events / (record_id() + ".json"), {
+                "kind": "command", "snapshot": snapshot["id"], "outcome": outcome,
+                "exit_code": result.returncode,
+            }, immutable=True)
         return result.returncode

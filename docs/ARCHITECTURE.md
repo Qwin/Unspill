@@ -6,7 +6,10 @@
   fsynced JSON writes, and a per-repository advisory lock.
 - `repository.py`: repository compatibility checks, filesystem inventory,
   snapshot manifests, protected commands, exports, and restore transactions.
-- `cli.py`: argument parsing, timeline display, and user-facing errors.
+- `platform.py`: POSIX/Windows locking, syncing, and path compatibility.
+- `navigation.py`: descriptive timeline, stable numbering, previews and file diffs.
+- `wizard.py`: explicit terminal choices for recovery and export.
+- `cli.py`: argument parsing and user-facing errors.
 
 ## Capture
 
@@ -50,7 +53,7 @@ a blanket power-failure guarantee across filesystems and hardware.
 ## Format v1
 
 A snapshot includes `version`, `id`, UTC `created`, `label`, `kind`, optional
-`source`, and an `entries` map keyed by repository-relative POSIX paths. Files
+`source`, optional `context` (branch, commit, changes and stash names), and an `entries` map keyed by repository-relative POSIX paths. Files
 contain `type`, `mode`, `size`, and an object hash; directories contain `type` and
 `mode`; symlinks contain `type`, `mode`, and `target`.
 
@@ -63,3 +66,16 @@ File contents are streamed; path inventories and manifests are held in memory.
 Restoration preserves regular permission bits (0777), not privileged mode bits.
 Manifests are validated but not signed or separately checksummed. SHA-256 validates
 object bytes against their content addresses. Backup stores are trusted local data.
+
+## Recovery navigation
+
+New captures record Git context without changing the v1 format. Command outcomes
+are separate append-only events, never edits to the pre-command manifest. Legacy
+snapshots without context remain valid. Numbered selectors are one-based positions
+in the append-only chronological timeline. Previews compare the captured entries
+against a freshly hashed live inventory; they do not perform a restore.
+
+Windows uses byte-range locking and file flushing. Directory fsync is unavailable
+through this implementation on Windows, so POSIX durability semantics must not be
+assumed. Windows reparse points are rejected and permissions use native platform
+semantics rather than claiming to preserve POSIX modes or ACLs.

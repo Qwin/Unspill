@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.0 — 2026-10-16 (public alpha)
+
+- Descriptive checkpoints with branch, commit subject, changed paths, stash names,
+  and separately recorded command outcomes.
+- Stable `@N` selectors, timeline search, file history and text comparisons.
+- Guided terminal recovery and previews against the current workspace.
+- Compatibility with existing v1 snapshots without fabricated context.
+- Native Windows support and a Windows/macOS/Linux Python 3.11–3.14 CI matrix.
+- Standalone executable builds for Windows x64, macOS Intel/Apple Silicon,
+  and Linux x64; pipx installation instructions.
+- Shorter README linked to installation, command, storage, and testing guides.
+- 115 tests and an opt-in real public repository recovery demonstration.
+
+
 ## 0.1.0 — 2026-10-16 (public alpha)
 
 Initial implementation of BGit's local recovery engine:

@@ -5,6 +5,7 @@ import subprocess
 import sys
 
 from tests.helpers import RepoCase
+from bgit import __version__
 
 
 class CliTests(RepoCase):
@@ -20,7 +21,7 @@ class CliTests(RepoCase):
         self.assertIn("recover", result.stdout)
 
     def test_version(self):
-        self.assertIn("0.2.0", self.cli("--version").stdout)
+        self.assertIn(__version__, self.cli("--version").stdout)
 
     def test_no_command_shows_help(self):
         self.assertIn("usage:", self.cli().stdout)
@@ -102,3 +103,31 @@ class CliTests(RepoCase):
         count = len(self.repo.timeline())
         self.assertEqual(self.cli("git", "status", "--short").returncode, 0)
         self.assertEqual(len(self.repo.timeline()), count)
+
+    def test_timeline_has_readable_context_and_selector(self):
+        result = self.cli("timeline")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("main", result.stdout)
+        self.assertIn("Commit: initial", result.stdout)
+        self.assertIn("@1", result.stdout)
+
+    def test_timeline_search(self):
+        self.repo.snapshot("login experiment")
+        result = self.cli("timeline", "--search", "login", "--json")
+        self.assertEqual(len(json.loads(result.stdout)), 1)
+
+    def test_diff_command(self):
+        self.write("tracked.txt", "later\n")
+        result = self.cli("diff", "@1", "--path", "tracked.txt")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("+original", result.stdout)
+
+    def test_history_command(self):
+        result = self.cli("history", "tracked.txt", "--json")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)[0]["file_state"], "file")
+
+    def test_recover_export_requires_destination(self):
+        result = self.cli("recover", "@1")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("--to", result.stderr)

@@ -13,3 +13,12 @@
 Related projects such as git-branchless informed the product discussion, but their
 code is not included. Future reuse must document source, version, license, and
 required attribution here before it is merged.
+
+## Standalone release executables
+
+Native downloads bundle CPython and use PyInstaller 6.22.0 with its bootloader
+exception. Each archive includes the Python license and license files collected
+from the packaging dependencies (PyInstaller, its hooks, altgraph, and packaging).
+The bootloader exception permits distribution of the application under its own
+license; BGit source remains Apache-2.0. Git is not included in these downloads.
+The binary build script fails if the Python license cannot be found.

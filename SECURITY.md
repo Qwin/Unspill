@@ -1,11 +1,13 @@
 # Security and data handling
 
-BGit 0.1 is a local alpha. Its backup store is trusted local data, not a format for
+BGit is a local alpha. Its backup store is trusted local data, not a format for
 importing snapshots from strangers. It can contain source code, credentials,
 ignored files, historical secrets, Git configuration, and executable Git hooks.
 Treat store access as access to all of that data. Restore only your own snapshots.
 
-BGit creates its repository-specific store with mode 0700. File objects and JSON
+On POSIX, BGit creates its repository-specific store with mode 0700. Windows
+stores inherit ACLs from their parent directory; Python mode bits do not provide
+equivalent access control. Use a private user directory. File objects and JSON
 records use private temporary files. It does not encrypt, upload, or automatically
 expire backups. Object checksums detect accidental corruption, not malicious
 rewriting of both manifests and objects. A process running as your user can modify
