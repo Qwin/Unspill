@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 — 2026-10-16 (local alpha)
+## 0.1.0 — 2026-10-16 (public alpha)
 
 Initial implementation of BGit's local recovery engine:
 
@@ -14,9 +14,10 @@ Initial implementation of BGit's local recovery engine:
 
 Locally validated on macOS with Python 3.14.4 and Python 3.12.2. The recovery demo
 also passed on Python 3.14.4. The GitHub Actions matrix is configured but has not
-run on a remote service. Package installation has not been validated locally
-because the available Python environments do not contain the build dependency;
-the module entry point is exercised by the CLI tests.
+run on a remote service at the time of preparation. Building and installing the
+package in an isolated Python 3.12 environment and running the installed `bgit`
+command were also validated.
 
-This version is not published to GitHub or a package registry. See the README for
+The source repository is https://github.com/Qwin/BGit under Robert Al-Malak's
+personal account. This version is not published to a package registry. See the README for
 the supported layouts and explicit limitations before using it with real work.

@@ -21,6 +21,7 @@ modifying the repository concurrently. Git commands can invoke user-configured
 hooks, filters, merge tools, and other executables. BGit cannot reverse their
 effects outside the repository.
 
-No hosted project or private vulnerability reporting endpoint has been configured
-yet. Before public release, maintainers must configure private reporting and
-update this document. Do not publish secrets or real backup archives in issues.
+Report vulnerabilities privately through
+[GitHub private vulnerability reporting](https://github.com/Qwin/BGit/security/advisories/new).
+Private reporting is enabled for this repository. Do not publish secrets or real
+backup archives in public issues.

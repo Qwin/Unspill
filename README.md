@@ -2,6 +2,8 @@
 
 **Keep your work recoverable before you commit.**
 
+Created by [Robert Al-Malak (@Qwin)](https://github.com/Qwin).
+
 BGit adds a local recovery timeline to an ordinary Git repository. It checkpoints
 your workspace before supported Git commands, including staged changes, unstaged
 edits, untracked files, ignored files, branches, stashes, and Git metadata.
@@ -45,6 +47,13 @@ backup store. Keep a separate backup of the store for those failures.
 
 Requirements: Python **3.11+**, Git on `PATH`, and macOS or Linux.
 The runtime has no third-party Python dependencies. Setuptools is used for packaging.
+
+Clone the public repository:
+
+```sh
+git clone https://github.com/Qwin/BGit.git
+cd BGit
+```
 
 From this checkout, install into a virtual environment **outside the repositories
 you will protect**:
