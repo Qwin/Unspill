@@ -13,6 +13,7 @@ import tempfile
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", type=Path, help="New directory to hold the isolated demo")
+    parser.add_argument("--bgit", type=Path, help="Test a standalone BGit executable instead of the source module")
     args = parser.parse_args()
     if args.directory:
         base = args.directory.resolve()
@@ -38,8 +39,10 @@ def main():
         return result.stdout
 
     def bgit(*args, quiet=False):
-        return command(sys.executable, "-m", "bgit", *args, quiet=quiet)
+        launcher = [str(parsed_binary)] if parsed_binary else [sys.executable, "-m", "bgit"]
+        return command(*launcher, *args, quiet=quiet)
 
+    parsed_binary = args.bgit.resolve() if args.bgit else None
     print(f"Demo files and permanent history: {base}", flush=True)
     command("git", "init", "-b", "main", quiet=True)
     command("git", "config", "core.autocrlf", "false")

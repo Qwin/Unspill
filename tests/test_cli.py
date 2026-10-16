@@ -10,7 +10,8 @@ from tests.helpers import RepoCase
 class CliTests(RepoCase):
     def cli(self, *args, cwd=None):
         env = {**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[1])}
-        return subprocess.run([sys.executable, "-m", "bgit", *args],
+        launcher = [os.environ["BGIT_TEST_EXECUTABLE"]] if "BGIT_TEST_EXECUTABLE" in os.environ else [sys.executable, "-m", "bgit"]
+        return subprocess.run([*launcher, *args],
                               cwd=cwd or self.root, env=env, capture_output=True, text=True)
 
     def test_help(self):

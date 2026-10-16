@@ -166,8 +166,9 @@ class Repository:
                 # O_NOFOLLOW closes the most common symlink substitution race.
                 fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0))
                 with os.fdopen(fd, "rb") as stream:
-                    if fingerprint(os.fstat(stream.fileno())) != signature:
-                        raise BGitError(f"File changed during snapshot: {relative}")
+                    opened = fingerprint(os.fstat(stream.fileno()))
+                    if opened != signature:
+                        raise BGitError(f"File changed during snapshot: {relative} (opened={opened}, inventoried={signature})")
                     entry.update(type="file", object=self.store.put(stream), size=signature[1])
             if fingerprint(path.lstat()) != signature:
                 raise BGitError(f"File changed during snapshot: {relative}")
