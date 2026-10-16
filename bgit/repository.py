@@ -67,6 +67,15 @@ def fingerprint(info: os.stat_result) -> tuple:
             info.st_ino, info.st_dev)
 
 
+def descriptor_matches(opened: tuple, inventoried: tuple) -> bool:
+    # CPython's Windows stat() reports creation time in ctime, while fstat()
+    # can report change time (python/cpython#157671). Compare like-for-like
+    # fields here; fstat-to-fstat and path-to-path checks retain ctime below.
+    if os.name == "nt":
+        return opened[:3] + opened[4:] == inventoried[:3] + inventoried[4:]
+    return opened == inventoried
+
+
 def inventory(root: Path) -> dict:
     """Do not follow symlinks, cross mounts, or silently omit unreadable paths."""
     result = {}
@@ -167,9 +176,11 @@ class Repository:
                 fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0))
                 with os.fdopen(fd, "rb") as stream:
                     opened = fingerprint(os.fstat(stream.fileno()))
-                    if opened != signature:
-                        raise BGitError(f"File changed during snapshot: {relative} (opened={opened}, inventoried={signature})")
+                    if not descriptor_matches(opened, signature):
+                        raise BGitError(f"File changed during snapshot: {relative}")
                     entry.update(type="file", object=self.store.put(stream), size=signature[1])
+                    if fingerprint(os.fstat(stream.fileno())) != opened:
+                        raise BGitError(f"File changed while reading: {relative}")
             if fingerprint(path.lstat()) != signature:
                 raise BGitError(f"File changed during snapshot: {relative}")
             entries[relative] = entry

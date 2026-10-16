@@ -5,6 +5,7 @@ import sys
 import unittest
 
 from bgit.platform import windows_path_is_safe
+from bgit.repository import descriptor_matches, fingerprint
 from bgit.storage import BGitError
 from tests.helpers import RepoCase
 
@@ -23,6 +24,12 @@ class WindowsPathTests(unittest.TestCase):
 
 
 class PlatformRecoveryTests(RepoCase):
+    def test_descriptor_and_path_comparison_for_modified_file(self):
+        path = self.write("metadata.txt", "initial")
+        path.write_text("modified content")
+        with path.open("rb") as stream:
+            self.assertTrue(descriptor_matches(fingerprint(os.fstat(stream.fileno())), fingerprint(path.lstat())))
+
     def test_readonly_file_restore(self):
         path = self.write("readonly.txt", "before")
         path.chmod(0o444)
