@@ -8,6 +8,10 @@ BGit adds a local recovery timeline to an ordinary Git repository. It checkpoint
 your workspace before supported Git commands, including staged changes, unstaged
 edits, untracked files, ignored files, branches, stashes, and Git metadata.
 
+**Already have a Git repository?** Add BGit to it without migrating or starting
+over. Your commits, branches, and remotes stay intact.
+[Get started with your existing repository](#already-have-a-git-repository).
+
 ```text
 $ bgit git reset --hard
 BGit checkpoint: <snapshot-id>
@@ -93,17 +97,47 @@ PASS: restoring the past retained later history
 Verified ... snapshots and ... unique objects.
 ```
 
-## Everyday usage
+## Already have a Git repository?
 
-In an existing Git repository:
+Yes—BGit is designed to add recovery to an existing project. After
+[installing BGit](#install), open your project's directory and initialize its
+backup history:
 
 ```sh
+cd /path/to/your/existing-project
 bgit init
+```
+
+This creates the first snapshot of your current workspace and Git metadata,
+including staged, unstaged, untracked, and ignored files. It does not create a
+replacement Git repository, rewrite commits, or change your branches or remotes.
+Your teammates do not need BGit installed.
+
+**Protection starts with that first snapshot.** BGit cannot recover work lost
+before it was captured. Ordinary `git` commands and IDE Git actions still work,
+but they do not automatically create BGit checkpoints. Run supported operations
+through `bgit git` to capture their starting state, or make a manual snapshot
+before using another tool.
+
+The current alpha supports ordinary, self-contained repositories on macOS and
+Linux. Linked worktrees, submodules, sparse checkouts, and partial clones are not
+supported yet. Ignored files are included in local backups, including secrets and
+generated files; read the [protection boundaries](#protection-boundaries) before
+enabling BGit on a project.
+
+## Everyday usage
+
+Once initialized, save a checkpoint before an experiment or wrap a Git operation:
+
+```sh
 bgit snapshot -m "Before experimenting"
 bgit git rebase main
-bgit git reset --hard HEAD~1
-bgit timeline
+
+# If the rebase was a mistake, recover its starting state:
 bgit undo
+
+# Browse all captured states:
+bgit timeline
 ```
 
 Use `bgit git <command>` for protected Git operations. Some commands also have a
