@@ -1,33 +1,33 @@
-# BGit command reference
+# Unspill command reference
 
 [README](../README.md) · [Installation](INSTALL.md) · [Storage and limitations](STORAGE.md)
 
-BGit works in an existing Git repository. Run `bgit init` once, then use
-`bgit git COMMAND` for automatic pre-operation checkpoints. Snapshots describe
+Unspill works in an existing Git repository. Run `unspill init` once, then use
+`unspill git COMMAND` for automatic pre-operation checkpoints. Snapshots describe
 the state **before** the action, not after it. Only captured work is recoverable.
 
 ## Commands at a glance
 
 | Command | Purpose |
 | --- | --- |
-| `bgit init` | Capture an existing repository and start its recovery timeline |
-| `bgit snapshot -m "Label"` | Make a named manual checkpoint |
-| `bgit git COMMAND ...` | Checkpoint before a supported Git operation |
-| `bgit timeline` | Show actions, times, branches, commit subjects and saved changes |
-| `bgit history PATH` | Browse captured versions of a file |
-| `bgit inspect SELECTOR` | Print a snapshot's full summary as JSON |
-| `bgit diff SELECTOR --path PATH` | Compare the current file with its captured version |
-| `bgit recover` | Open the guided terminal recovery picker |
-| `bgit recover SELECTOR --to DIR` | Export a separate repository copy |
-| `bgit recover SELECTOR --path PATH --to DIR` | Export a file or directory |
-| `bgit restore SELECTOR --dry-run` | Preview the changes a full restoration would make |
-| `bgit restore SELECTOR` | Restore the complete captured workspace and Git metadata |
-| `bgit undo` | Restore the latest pre-command or pre-restore checkpoint |
-| `bgit resume [--rollback]` | Finish or roll back an interrupted restore |
-| `bgit verify` | Check manifests and all referenced object checksums |
+| `unspill init` | Capture an existing repository and start its recovery timeline |
+| `unspill snapshot -m "Label"` | Make a named manual checkpoint |
+| `unspill git COMMAND ...` | Checkpoint before a supported Git operation |
+| `unspill timeline` | Show actions, times, branches, commit subjects and saved changes |
+| `unspill history PATH` | Browse captured versions of a file |
+| `unspill inspect SELECTOR` | Print a snapshot's full summary as JSON |
+| `unspill diff SELECTOR --path PATH` | Compare the current file with its captured version |
+| `unspill recover` | Open the guided terminal recovery picker |
+| `unspill recover SELECTOR --to DIR` | Export a separate repository copy |
+| `unspill recover SELECTOR --path PATH --to DIR` | Export a file or directory |
+| `unspill restore SELECTOR --dry-run` | Preview the changes a full restoration would make |
+| `unspill restore SELECTOR` | Restore the complete captured workspace and Git metadata |
+| `unspill undo` | Restore the latest pre-command or pre-restore checkpoint |
+| `unspill resume [--rollback]` | Finish or roll back an interrupted restore |
+| `unspill verify` | Check manifests and all referenced object checksums |
 
-`bgit --help` shows top-level help. `bgit COMMAND --help` explains BGit command
-options. `bgit git COMMAND --help` passes help through to Git. `bgit --version`
+`unspill --help` shows top-level help. `unspill COMMAND --help` explains Unspill command
+options. `unspill git COMMAND --help` passes help through to Git. `unspill --version`
 prints the installed version.
 
 ## Choosing a checkpoint
@@ -35,18 +35,19 @@ prints the installed version.
 Selectors accept a full snapshot ID, a unique ID prefix, or a numbered choice such
 as `@18`. Numbers are assigned oldest-first across the complete timeline and stay
 stable as new snapshots are added. Search results retain the original numbers.
+Quote numbered selectors in PowerShell, for example `unspill inspect '@18'`.
 Numbers are local to a repository; full IDs remain available for scripts.
 
 Human-readable timelines show newest-first, with local timestamps including the
 timezone. JSON timelines remain oldest-first and use the stored UTC timestamps.
 
 ```sh
-bgit timeline
-bgit timeline --search "login"
-bgit timeline --branch feature/login
-bgit timeline --branch feature/login --search "reset"
-bgit timeline --json
-bgit inspect @18
+unspill timeline
+unspill timeline --search "login"
+unspill timeline --branch feature/login
+unspill timeline --branch feature/login --search "reset"
+unspill timeline --json
+unspill inspect @18
 ```
 
 Illustrative output:
@@ -72,7 +73,7 @@ includes the full captured context and all workspace paths.
 Search matches labels and recorded Git context: branch, commit subject, changed
 paths and stash names. It does not search file contents. Detached HEAD and unborn
 branches have explicit labels. Older snapshots without descriptive metadata remain
-recoverable and are labeled as legacy; BGit does not invent missing context.
+recoverable and are labeled as legacy; Unspill does not invent missing context.
 
 Operation outcomes are appended separately so snapshot records stay immutable.
 They distinguish completed, failed, and stopped-on-conflicts operations. If a
@@ -84,11 +85,11 @@ URLs and commit-message arguments. Existing commit subjects are captured locally
 ## Guided recovery
 
 ```sh
-bgit recover
+unspill recover
 ```
 
 In a terminal, choose the last operation, a file's history, branch/stash operations,
-or the full timeline. Pick an `@number` from the displayed results. BGit previews
+or the full timeline. Pick an `@number` from the displayed results. Unspill previews
 workspace changes, staging changes, and the captured branch/commit, then offers:
 
 - `d`: inspect a file's text differences;
@@ -100,15 +101,15 @@ Choosing a branch/stash operation selects a full repository checkpoint, not an
 isolated branch or stash restore. Full restoration can also change unrelated files;
 use a separate export when you want to inspect first.
 
-The picker requires a terminal and holds the BGit lock while open. It does not lock
+The picker requires a terminal and holds the Unspill lock while open. It does not lock
 out editors or other Git clients; pause their writes while using it. For scripts,
 use explicit `restore` or `recover SELECTOR --to DIR` commands instead.
 
 ## Preview and compare
 
 ```sh
-bgit restore @18 --dry-run
-bgit diff @18 --path src/login.py
+unspill restore @18 --dry-run
+unspill diff @18 --path src/login.py
 ```
 
 The preview compares the selected checkpoint with the **current live workspace**.
@@ -125,8 +126,8 @@ differences; full restore preserves the captured index independently.
 ## File history
 
 ```sh
-bgit history src/login.py
-bgit history src/login.py --json
+unspill history src/login.py
+unspill history src/login.py --json
 ```
 
 History shows captured content/type/permission transitions, collapsing adjacent
@@ -137,9 +138,9 @@ exact and repository-relative; renames are not automatically followed.
 ## Full restore and undo
 
 ```sh
-bgit restore @18 --dry-run
-bgit restore @18
-bgit undo
+unspill restore @18 --dry-run
+unspill restore @18
+unspill undo
 ```
 
 Explicit `restore` executes without an additional prompt. It first verifies and
@@ -157,9 +158,9 @@ their checkpoint, since an unsuccessful Git operation may still modify files.
 ## Export without replacing current work
 
 ```sh
-bgit recover @18 --path src/login.py --to ../rescued-file
-bgit recover @18 --path src --to ../rescued-source
-bgit recover @18 --to ../earlier-project
+unspill recover @18 --path src/login.py --to ../rescued-file
+unspill recover @18 --path src --to ../rescued-source
+unspill recover @18 --to ../earlier-project
 ```
 
 The first command writes `../rescued-file/src/login.py`. A full export includes
@@ -175,8 +176,8 @@ after the interruption, copy them elsewhere before resuming: resume does not mak
 a new checkpoint of an incomplete repository.
 
 ```sh
-bgit --repo /absolute/path/to/project resume
-bgit --repo /absolute/path/to/project resume --rollback
+unspill --repo /absolute/path/to/project resume
+unspill --repo /absolute/path/to/project resume --rollback
 ```
 
 The first finishes the recorded target; the second restores the pre-restore
@@ -185,12 +186,12 @@ if `.git` is incomplete. The root directory must still exist.
 
 `--repo PATH` is a global option and comes before the command. Without it, commands
 discover the repository from the current directory. Git arguments retain their
-usual directory-relative meaning; BGit file-history/export paths are root-relative.
+usual directory-relative meaning; Unspill file-history/export paths are root-relative.
 
 ## Verification
 
 ```sh
-bgit verify
+unspill verify
 ```
 
 Verifies snapshot structure and referenced compressed objects against SHA-256
@@ -205,12 +206,12 @@ Protected: `add`, `am`, `apply`, `branch`, `checkout`, `cherry-pick`, `clean`,
 
 Inspection pass-through: `diff`, `log`, `show`, `status`.
 
-Always use `bgit git COMMAND` to avoid ambiguity. `bgit restore` and `bgit diff`
-refer to BGit checkpoints; `bgit git restore` and `bgit git diff` invoke Git.
-Non-conflicting shorthands such as `bgit reset --hard` also work.
+Always use `unspill git COMMAND` to avoid ambiguity. `unspill restore` and `unspill diff`
+refer to Unspill checkpoints; `unspill git restore` and `unspill git diff` invoke Git.
+Non-conflicting shorthands such as `unspill reset --hard` also work.
 
 Git global options, arbitrary aliases, `push`, and environment variables that
 redirect Git's repository/index/object store are rejected. Use ordinary Git for
 remote pushes; a local restore cannot undo changes already published remotely.
-The wrapper returns Git's exit code. BGit errors return 1; invalid CLI syntax
+The wrapper returns Git's exit code. Unspill errors return 1; invalid CLI syntax
 returns 2; Ctrl-C returns 130.

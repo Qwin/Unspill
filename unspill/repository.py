@@ -12,7 +12,7 @@ import tempfile
 import time
 import uuid
 
-from .storage import BGitError, Store, atomic_json, read_json, sync_dir
+from .storage import UnspillError, Store, atomic_json, read_json, sync_dir
 from .platform import default_home, sync_file, windows_path_is_safe
 
 
@@ -31,7 +31,7 @@ def reject_git_environment() -> None:
         "GIT_CONFIG", "GIT_CONFIG_COUNT", "GIT_CONFIG_PARAMETERS",
     }
     if found := sorted(unsafe.intersection(os.environ)):
-        raise BGitError("Unset Git repository/config overrides: " + ", ".join(found))
+        raise UnspillError("Unset Git repository/config overrides: " + ", ".join(found))
 
 
 def git(root: Path, *args: str) -> subprocess.CompletedProcess:
@@ -45,7 +45,7 @@ def git(root: Path, *args: str) -> subprocess.CompletedProcess:
 def discover(path: Path) -> Path:
     result = git(path, "rev-parse", "--show-toplevel")
     if result.returncode:
-        raise BGitError("Not a Git working repository. Run git init first, or use --repo PATH for recovery.")
+        raise UnspillError("Not a Git working repository. Run git init first, or use --repo PATH for recovery.")
     return Path(os.fsdecode(result.stdout).strip()).resolve()
 
 
@@ -87,18 +87,18 @@ def inventory(root: Path) -> dict:
             relative = path.relative_to(root).as_posix()
             info = path.lstat()
             if os.name == "nt" and getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT:
-                raise BGitError(f"Windows reparse points (including junctions/symlinks) are unsupported: {relative}")
+                raise UnspillError(f"Windows reparse points (including junctions/symlinks) are unsupported: {relative}")
             if info.st_dev != device:
-                raise BGitError(f"Mounted filesystems are unsupported: {relative}")
+                raise UnspillError(f"Mounted filesystems are unsupported: {relative}")
             if path.name == ".git" and relative != ".git":
-                raise BGitError(f"Nested repositories/submodules are unsupported: {relative}")
+                raise UnspillError(f"Nested repositories/submodules are unsupported: {relative}")
             if relative.startswith(".git/") and path.name.endswith(".lock"):
-                raise BGitError(f"Git lock present; finish the Git operation first: {relative}")
+                raise UnspillError(f"Git lock present; finish the Git operation first: {relative}")
             if stat.S_ISLNK(info.st_mode):
                 if relative == ".git" or relative.startswith(".git/"):
-                    raise BGitError("Symlinks inside Git metadata are unsupported.")
+                    raise UnspillError("Symlinks inside Git metadata are unsupported.")
             elif not (stat.S_ISREG(info.st_mode) or stat.S_ISDIR(info.st_mode)):
-                raise BGitError(f"Special files (sockets/devices/FIFOs) are unsupported: {relative}")
+                raise UnspillError(f"Special files (sockets/devices/FIFOs) are unsupported: {relative}")
             result[relative] = fingerprint(info)
             if stat.S_ISDIR(info.st_mode):
                 walk(path)
@@ -110,11 +110,22 @@ def inventory(root: Path) -> dict:
 class Repository:
     def __init__(self, root: Path, home: Path | None = None):
         self.root = root.resolve()
-        base = home or Path(os.environ.get("BGIT_HOME", str(default_home()))).expanduser()
-        base = base.resolve()
-        if base == self.root or base.is_relative_to(self.root) or self.root.is_relative_to(base):
-            raise BGitError("BGIT_HOME must be outside the repository, and cannot contain it.")
         identity = hashlib.sha256(os.fsencode(str(self.root))).hexdigest()
+        configured = home or os.environ.get("UNSPILL_HOME") or os.environ.get("BGIT_HOME")
+        if configured:
+            base = Path(configured).expanduser().resolve()
+        else:
+            base = default_home().resolve()
+            legacy = default_home(legacy=True).resolve()
+            current_store = base / "repositories" / identity
+            legacy_store = legacy / "repositories" / identity
+            if current_store.exists() and legacy_store.exists():
+                raise UnspillError("Two backup histories found. Set UNSPILL_HOME to the intended store; histories are never merged automatically.")
+            if legacy_store.exists():
+                base = legacy
+
+        if base == self.root or base.is_relative_to(self.root) or self.root.is_relative_to(base):
+            raise UnspillError("UNSPILL_HOME must be outside the repository, and cannot contain it.")
         self.store = Store(base / "repositories" / identity)
         self.pending = self.store.path / "pending.json"
 
@@ -123,7 +134,7 @@ class Repository:
         self.store.create()
         with self.store.lock():
             if (self.store.path / "repository.json").exists():
-                raise BGitError("BGit is already initialized here.")
+                raise UnspillError("Unspill is already initialized here.")
             snapshot = self.snapshot("Initial snapshot", kind="initial")
             atomic_json(self.store.path / "repository.json", {"version": 1, "root": str(self.root)}, immutable=True)
             return snapshot
@@ -131,33 +142,33 @@ class Repository:
     def require_initialized(self) -> None:
         metadata = read_json(self.store.path / "repository.json")
         if metadata.get("version") != 1 or metadata.get("root") != str(self.root):
-            raise BGitError("Backup store does not match this repository.")
+            raise UnspillError("Backup store does not match this repository.")
 
     def require_idle(self) -> None:
         if self.pending.exists():
-            raise BGitError("An interrupted restore is pending. Use bgit resume (or resume --rollback).")
+            raise UnspillError("An interrupted restore is pending. Use unspill resume (or resume --rollback).")
 
     def validate_repository(self) -> None:
         reject_git_environment()
         metadata = self.root / ".git"
         if not metadata.is_dir() or metadata.is_symlink():
-            raise BGitError("Only ordinary repositories with a real .git directory are supported.")
+            raise UnspillError("Only ordinary repositories with a real .git directory are supported.")
         for relative in ("commondir", "objects/info/alternates"):
             if (metadata / relative).exists():
-                raise BGitError("Shared Git directories/object stores are unsupported.")
+                raise UnspillError("Shared Git directories/object stores are unsupported.")
         if (metadata / "worktrees").exists() and any((metadata / "worktrees").iterdir()):
-            raise BGitError("Repositories with linked worktrees are unsupported.")
+            raise UnspillError("Repositories with linked worktrees are unsupported.")
         for key in ("core.worktree", "extensions.partialclone", "core.sparsecheckout"):
             result = git(self.root, "config", "--get", key)
             if result.returncode == 0 and result.stdout.strip().lower() not in (b"false", b"0"):
-                raise BGitError(f"Unsupported repository setting: {key}")
+                raise UnspillError(f"Unsupported repository setting: {key}")
         if git(self.root, "config", "--get-regexp", r"remote\..*\.promisor").returncode == 0:
-            raise BGitError("Partial clones are unsupported.")
+            raise UnspillError("Partial clones are unsupported.")
         result = git(self.root, "ls-files", "--stage", "-z")
         if result.returncode:
-            raise BGitError("Cannot read the Git index.")
+            raise UnspillError("Cannot read the Git index.")
         if any(entry.startswith(b"160000 ") for entry in result.stdout.split(b"\0")):
-            raise BGitError("Submodules are unsupported.")
+            raise UnspillError("Submodules are unsupported.")
 
     def describe(self) -> dict:
         """Read descriptive Git state without letting status refresh the index."""
@@ -218,15 +229,15 @@ class Repository:
                 with os.fdopen(fd, "rb") as stream:
                     opened = fingerprint(os.fstat(stream.fileno()))
                     if not descriptor_matches(opened, signature):
-                        raise BGitError(f"File changed during snapshot: {relative}")
+                        raise UnspillError(f"File changed during snapshot: {relative}")
                     entry.update(type="file", object=self.store.put(stream), size=signature[1])
                     if fingerprint(os.fstat(stream.fileno())) != opened:
-                        raise BGitError(f"File changed while reading: {relative}")
+                        raise UnspillError(f"File changed while reading: {relative}")
             if fingerprint(path.lstat()) != signature:
-                raise BGitError(f"File changed during snapshot: {relative}")
+                raise UnspillError(f"File changed during snapshot: {relative}")
             entries[relative] = entry
         if before != inventory(self.root):
-            raise BGitError("Repository changed during snapshot. Pause other writers and retry.")
+            raise UnspillError("Repository changed during snapshot. Pause other writers and retry.")
         previous = max((path.stem for path in self.store.snapshots.glob("*.json")), default="0-")
         snapshot = {
             "version": 1, "id": record_id(int(previous.split("-")[0])),
@@ -244,48 +255,48 @@ class Repository:
             records = sorted(self.store.snapshots.glob("*.json"))
             number = int(selector[1:])
             if not 1 <= number <= len(records):
-                raise BGitError("Snapshot number is outside the timeline.")
+                raise UnspillError("Snapshot number is outside the timeline.")
             selector = records[number - 1].stem
         if not selector or any(c not in "0123456789abcdef-" for c in selector):
-            raise BGitError("Use a snapshot ID or unique ID prefix from bgit timeline.")
+            raise UnspillError("Use a snapshot ID or unique ID prefix from unspill timeline.")
         matches = list(self.store.snapshots.glob(selector + "*.json"))
         if len(matches) != 1:
-            raise BGitError(f"Snapshot ID matched {len(matches)} records; use a unique ID.")
+            raise UnspillError(f"Snapshot ID matched {len(matches)} records; use a unique ID.")
         value = read_json(matches[0])
         if value.get("version") != 1 or value.get("id") != matches[0].stem:
-            raise BGitError("Unsupported or invalid snapshot manifest.")
+            raise UnspillError("Unsupported or invalid snapshot manifest.")
         entries = value.get("entries")
         if not isinstance(entries, dict) or not isinstance(entries.get(".git"), dict) or entries[".git"].get("type") != "directory":
-            raise BGitError("Snapshot is missing Git metadata.")
+            raise UnspillError("Snapshot is missing Git metadata.")
         if any(not isinstance(value.get(key), str) for key in ("created", "label", "kind")):
-            raise BGitError("Invalid snapshot metadata.")
+            raise UnspillError("Invalid snapshot metadata.")
         for name, entry in entries.items():
             path = PurePosixPath(name)
             if not name or name == "." or path.is_absolute() or ".." in path.parts or str(path) != name or "\0" in name:
-                raise BGitError("Unsafe path in snapshot.")
+                raise UnspillError("Unsafe path in snapshot.")
             if not isinstance(entry, dict) or entry.get("type") not in {"file", "directory", "symlink"}:
-                raise BGitError("Invalid snapshot entry.")
+                raise UnspillError("Invalid snapshot entry.")
             if os.name == "nt" and (not windows_path_is_safe(name) or entry["type"] == "symlink"):
-                raise BGitError("Snapshot contains a path unsupported on Windows.")
+                raise UnspillError("Snapshot contains a path unsupported on Windows.")
             if type(entry.get("mode")) is not int or not 0 <= entry["mode"] <= 0o7777:
-                raise BGitError("Invalid file mode.")
+                raise UnspillError("Invalid file mode.")
             if entry["type"] == "file":
                 self.store.object_path(entry.get("object"))
                 if type(entry.get("size")) is not int or entry["size"] < 0:
-                    raise BGitError("Invalid file size.")
+                    raise UnspillError("Invalid file size.")
             if entry["type"] == "symlink":
                 if name.startswith(".git/") or not isinstance(entry.get("target"), str) or not entry["target"] or "\0" in entry["target"]:
-                    raise BGitError("Invalid symlink.")
+                    raise UnspillError("Invalid symlink.")
             for parent in path.parents:
                 if str(parent) != "." and entries.get(str(parent), {}).get("type") != "directory":
-                    raise BGitError("Snapshot path has a missing or non-directory parent.")
+                    raise UnspillError("Snapshot path has a missing or non-directory parent.")
         return value
 
     def materialize(self, snapshot: dict, destination: Path, selected: str | None = None) -> None:
         entries = snapshot["entries"]
         if selected is not None:
             if selected not in entries or selected == ".git" or selected.startswith(".git/"):
-                raise BGitError("Select an existing workspace file or directory, not Git metadata.")
+                raise UnspillError("Select an existing workspace file or directory, not Git metadata.")
             entries = {name: entry for name, entry in entries.items()
                        if name == selected or name.startswith(selected + "/")}
         for name, entry in sorted(entries.items(), key=lambda pair: (pair[0].count("/"), pair[0])):
@@ -313,9 +324,9 @@ class Repository:
         destination = destination.absolute()
         resolved = destination.resolve()
         if resolved.is_relative_to(self.root) or resolved.is_relative_to(self.store.path):
-            raise BGitError("Recovery destination must be outside the repository and its backup store.")
+            raise UnspillError("Recovery destination must be outside the repository and its backup store.")
         if destination.exists() or destination.is_symlink():
-            raise BGitError("Recovery destination must not already exist.")
+            raise UnspillError("Recovery destination must not already exist.")
         destination.mkdir(parents=True, mode=0o700)
         try:
             self.materialize(snapshot, destination, selected)
@@ -381,17 +392,17 @@ class Repository:
     def undo(self) -> dict:
         candidates = [s for s in self.timeline() if s["kind"] in {"before-command", "before-restore"}]
         if not candidates:
-            raise BGitError("Nothing to undo. Make a protected Git operation first.")
+            raise UnspillError("Nothing to undo. Make a protected Git operation first.")
         return self.restore(candidates[-1]["id"])
 
     def run(self, args: list[str], cwd: Path) -> int:
         self.require_idle()
         if not args or args[0] not in PROTECTED | READ_ONLY:
-            raise BGitError("Unsupported Git command. Use a supported built-in subcommand; aliases/global Git options are not accepted.")
+            raise UnspillError("Unsupported Git command. Use a supported built-in subcommand; aliases/global Git options are not accepted.")
         self.validate_repository()
         if args[0] in PROTECTED:
             snapshot = self.snapshot(f"Before {self.action_description(args)}", kind="before-command")
-            print(f"BGit checkpoint: {snapshot['id']}", flush=True)
+            print(f"Unspill checkpoint: {snapshot['id']}", flush=True)
         result = subprocess.run(
             ["git", "-c", "gc.auto=0", "-c", "maintenance.auto=false", *args], cwd=cwd,
         )

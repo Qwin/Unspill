@@ -1,4 +1,4 @@
-# BGit — Git with a recovery history
+# Unspill — get your work back
 
 Keep your uncommitted work, staging, branches, and stashes recoverable before risky
 Git operations. Find a checkpoint by its action, branch, commit message, or file
@@ -7,15 +7,17 @@ history, then preview and recover it.
 **Public alpha for Windows, macOS, and Linux.** Created by Robert Al-Malak
 ([Qwin](https://github.com/Qwin)). [Apache-2.0](LICENSE).
 
+An independent recovery tool for Git® workspaces. Previously released as BGit. [Upgrading an existing installation](docs/MIGRATING.md).
+
 ## Install
 
 With Git, Python 3.11+, and pipx installed:
 
 ```sh
-pipx install "git+https://github.com/Qwin/BGit.git@v0.3.0-alpha.1"
+pipx install "git+https://github.com/Qwin/Unspill.git@v0.4.0-alpha.1"
 ```
 
-Prefer a standalone executable? [Download a release](https://github.com/Qwin/BGit/releases)
+Prefer a standalone executable? [Download a release](https://github.com/Qwin/Unspill/releases)
 for Windows x64, macOS Intel/Apple Silicon, or Linux x64. Git is still required.
 See the [installation guide](docs/INSTALL.md) for setup, checksums, and updating.
 
@@ -26,21 +28,21 @@ Your normal Git tools still work.
 
 ```sh
 cd your-existing-project
-bgit init
-bgit snapshot -m "Login changes before the cleanup"
-bgit git reset --hard HEAD
-bgit recover
+unspill init
+unspill snapshot -m "Login changes before the cleanup"
+unspill git reset --hard HEAD
+unspill recover
 ```
 
-`bgit init` captures the current repository. Use `bgit git` for automatic
+`unspill init` captures the current repository. Use `unspill git` for automatic
 checkpoints before supported operations. Ordinary `git` commands and edits are
 not automatically captured; take a manual snapshot whenever you need one.
 
 ## Find the right moment
 
 ```sh
-bgit timeline
-bgit timeline --search "login"
+unspill timeline
+unspill timeline --search "login"
 ```
 
 Illustrative timeline entry:
@@ -64,10 +66,10 @@ when they lack the new descriptions.
 ## Recover your work
 
 ```sh
-bgit recover                         # Guided picker, preview, restore or export
-bgit undo                            # Restore the latest pre-operation state
-bgit restore @18 --dry-run            # Preview a particular checkpoint
-bgit recover @18 --path src/login.py --to ../rescued-file
+unspill recover                         # Guided picker, preview, restore or export
+unspill undo                            # Restore the latest pre-operation state
+unspill restore @18 --dry-run            # Preview a particular checkpoint
+unspill recover @18 --path src/login.py --to ../rescued-file
 ```
 
 The last command exports `src/login.py` into a new folder. Full restoration saves
@@ -82,11 +84,11 @@ again. Preview before restoring to see files and Git state that would change.
 - [Storage, supported repositories, and limitations](docs/STORAGE.md)
 - [Testing and runnable recovery demos](docs/TESTING.md)
 - [Architecture](docs/ARCHITECTURE.md), [roadmap](docs/ROADMAP.md),
-  [contributing](CONTRIBUTING.md), and [changelog](CHANGELOG.md)
+  [contributing](CONTRIBUTING.md), [naming research](docs/NAMING.md), and [changelog](CHANGELOG.md)
 
 ## Know what is protected
 
-BGit captures **ignored files too**, so backups may contain credentials and secrets.
+Unspill captures **ignored files too**, so backups may contain credentials and secrets.
 Backups live outside the repository, are not encrypted, and have no automatic
 expiry. Pause other tools that write to the repository during capture or recovery.
 Only captured work can be recovered; local history cannot undo remote pushes or

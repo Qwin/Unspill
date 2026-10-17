@@ -15,17 +15,17 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def main():
     subprocess.run([sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--onefile",
-                    "--name", "bgit", "--paths", str(ROOT), "--distpath", str(ROOT / "dist"),
+                    "--name", "unspill", "--paths", str(ROOT), "--distpath", str(ROOT / "dist"),
                     "--workpath", str(ROOT / "build/pyinstaller"), "--specpath", str(ROOT / "build"),
-                    str(ROOT / "scripts/bgit_entry.py")], cwd=ROOT, check=True,
+                    str(ROOT / "scripts/unspill_entry.py")], cwd=ROOT, check=True,
                    env={**os.environ, "PYINSTALLER_CONFIG_DIR": str(ROOT / "build/cache")})
-    executable = ROOT / "dist" / ("bgit.exe" if os.name == "nt" else "bgit")
+    executable = ROOT / "dist" / ("unspill.exe" if os.name == "nt" else "unspill")
     subprocess.run([sys.executable, "-m", "unittest", "tests.test_cli", "-v"], cwd=ROOT,
-                   env={**os.environ, "BGIT_TEST_EXECUTABLE": str(executable)}, check=True)
-    subprocess.run([sys.executable, str(ROOT / "examples/recovery_demo.py"), "--bgit", str(executable)], check=True)
+                   env={**os.environ, "UNSPILL_TEST_EXECUTABLE": str(executable)}, check=True)
+    subprocess.run([sys.executable, str(ROOT / "examples/recovery_demo.py"), "--unspill", str(executable)], check=True)
     system = {"Darwin": "macos", "Windows": "windows", "Linux": "linux"}[platform.system()]
     arch = {"AMD64": "x86_64", "aarch64": "arm64"}.get(platform.machine(), platform.machine())
-    name = f"bgit-{system}-{arch}"
+    name = f"unspill-{system}-{arch}"
     folder = ROOT / "build" / name
     folder.mkdir(parents=True, exist_ok=True)
     shutil.copy2(executable, folder / executable.name)

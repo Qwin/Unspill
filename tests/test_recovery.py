@@ -4,8 +4,8 @@ import shutil
 import unittest
 from unittest.mock import patch
 
-from bgit.repository import Repository, discover
-from bgit.storage import BGitError, atomic_json
+from unspill.repository import Repository, discover
+from unspill.storage import UnspillError, atomic_json
 from tests.helpers import RepoCase
 
 
@@ -178,7 +178,7 @@ class RecoveryTests(RepoCase):
         directory.chmod(0o755)
 
     def test_clock_rollback_does_not_reorder_history(self):
-        with patch("bgit.repository.time.time_ns", return_value=1):
+        with patch("unspill.repository.time.time_ns", return_value=1):
             snapshot = self.repo.snapshot("clock moved backward")
         self.assertGreater(snapshot["id"], self.initial["id"])
         self.assertEqual(self.repo.timeline()[-1]["id"], snapshot["id"])
@@ -205,22 +205,22 @@ class RecoveryTests(RepoCase):
         self.assertEqual((destination / "src/nested/file").read_text(), "nested")
 
     def test_existing_export_directory_rejected(self):
-        with self.assertRaises(BGitError):
+        with self.assertRaises(UnspillError):
             self.repo.recover(self.initial["id"], self.base)
 
     def test_export_inside_repository_rejected(self):
-        with self.assertRaises(BGitError):
+        with self.assertRaises(UnspillError):
             self.repo.recover(self.initial["id"], self.root / "recovered")
 
     def test_export_git_metadata_selection_rejected(self):
-        with self.assertRaises(BGitError):
+        with self.assertRaises(UnspillError):
             self.repo.recover(self.initial["id"], self.base / "recovered", ".git/config")
 
     def test_corrupted_backup_never_changes_current_workspace(self):
         digest = self.initial["entries"]["tracked.txt"]["object"]
         self.repo.store.object_path(digest).write_bytes(b"corrupt")
         self.write("tracked.txt", "current")
-        with self.assertRaises(BGitError):
+        with self.assertRaises(UnspillError):
             self.repo.restore(self.initial["id"])
         self.assertEqual((self.root / "tracked.txt").read_text(), "current")
         self.assertFalse(self.repo.pending.exists())
@@ -261,7 +261,7 @@ class RecoveryTests(RepoCase):
 
     def test_pending_restore_blocks_new_destructive_operation(self):
         atomic_json(self.repo.pending, {"target": self.initial["id"], "rollback": self.initial["id"]})
-        with self.assertRaisesRegex(BGitError, "interrupted"):
+        with self.assertRaisesRegex(UnspillError, "interrupted"):
             self.protected("reset", "--hard")
 
     def test_changed_file_during_snapshot_is_rejected(self):
@@ -277,47 +277,47 @@ class RecoveryTests(RepoCase):
             return digest
         count = len(self.repo.timeline())
         with patch.object(self.repo.store, "put", side_effect=mutate_once):
-            with self.assertRaisesRegex(BGitError, "changed"):
+            with self.assertRaisesRegex(UnspillError, "changed"):
                 self.repo.snapshot("race")
         self.assertEqual(len(self.repo.timeline()), count)
 
     def test_git_lock_blocks_snapshot(self):
         self.write(".git/index.lock", "")
-        with self.assertRaisesRegex(BGitError, "lock"):
+        with self.assertRaisesRegex(UnspillError, "lock"):
             self.repo.snapshot("locked")
 
     def test_nested_repository_rejected(self):
         (self.root / "nested/.git").mkdir(parents=True)
-        with self.assertRaisesRegex(BGitError, "Nested"):
+        with self.assertRaisesRegex(UnspillError, "Nested"):
             self.repo.snapshot("nested")
 
     def test_linked_worktree_rejected(self):
         self.git("worktree", "add", "-b", "linked", str(self.base / "linked"))
-        with self.assertRaisesRegex(BGitError, "worktrees"):
+        with self.assertRaisesRegex(UnspillError, "worktrees"):
             self.repo.snapshot("worktree")
 
     def test_alternate_object_store_rejected(self):
         self.write(".git/objects/info/alternates", "/some/other/objects")
-        with self.assertRaisesRegex(BGitError, "Shared"):
+        with self.assertRaisesRegex(UnspillError, "Shared"):
             self.repo.snapshot("shared")
 
     @unittest.skipIf(os.name == "nt", "POSIX FIFO")
     def test_special_file_rejected(self):
         os.mkfifo(self.root / "pipe")
-        with self.assertRaisesRegex(BGitError, "Special"):
+        with self.assertRaisesRegex(UnspillError, "Special"):
             self.repo.snapshot("fifo")
 
     def test_store_inside_repository_rejected(self):
-        with self.assertRaises(BGitError):
-            Repository(self.root, self.root / ".bgit")
+        with self.assertRaises(UnspillError):
+            Repository(self.root, self.root / ".unspill")
 
     def test_store_containing_repository_rejected(self):
-        with self.assertRaises(BGitError):
+        with self.assertRaises(UnspillError):
             Repository(self.root, self.base)
 
     def test_git_environment_override_rejected(self):
         with patch.dict(os.environ, {"GIT_INDEX_FILE": str(self.base / "index")}):
-            with self.assertRaises(BGitError):
+            with self.assertRaises(UnspillError):
                 self.repo.snapshot("override")
 
     def test_discovery_from_subdirectory(self):
@@ -325,7 +325,7 @@ class RecoveryTests(RepoCase):
         self.assertEqual(discover(self.root / "src"), self.root)
 
     def test_double_initialization_rejected(self):
-        with self.assertRaises(BGitError):
+        with self.assertRaises(UnspillError):
             self.repo.initialize()
 
     def test_empty_repository_supported(self):
@@ -340,23 +340,23 @@ class RecoveryTests(RepoCase):
 
     def test_unsupported_command_and_alias_rejected(self):
         for command in ("push", "config", "my-alias", "-C"):
-            with self.subTest(command=command), self.assertRaises(BGitError):
+            with self.subTest(command=command), self.assertRaises(UnspillError):
                 self.protected(command)
 
     def test_undo_without_command_rejected(self):
-        with self.assertRaisesRegex(BGitError, "Nothing"):
+        with self.assertRaisesRegex(UnspillError, "Nothing"):
             self.repo.undo()
 
     def test_snapshot_selector_rejects_path_traversal(self):
         for selector in ("../", "", "*", "missing"):
-            with self.subTest(selector=selector), self.assertRaises(BGitError):
+            with self.subTest(selector=selector), self.assertRaises(UnspillError):
                 self.repo.load(selector)
 
     def test_manifest_path_traversal_rejected(self):
         snapshot = self.repo.load(self.initial["id"])
         snapshot["entries"]["../outside"] = {"type": "directory", "mode": 0o755}
         atomic_json(self.repo.store.snapshots / (snapshot["id"] + ".json"), snapshot)
-        with self.assertRaisesRegex(BGitError, "Unsafe"):
+        with self.assertRaisesRegex(UnspillError, "Unsafe"):
             self.repo.load(snapshot["id"])
 
     def test_manifest_symlink_parent_rejected(self):
@@ -364,5 +364,5 @@ class RecoveryTests(RepoCase):
         snapshot["entries"]["escape"] = {"type": "symlink", "mode": 0o777, "target": "/tmp"}
         snapshot["entries"]["escape/child"] = {"type": "directory", "mode": 0o755}
         atomic_json(self.repo.store.snapshots / (snapshot["id"] + ".json"), snapshot)
-        with self.assertRaises(BGitError):
+        with self.assertRaises(UnspillError):
             self.repo.load(snapshot["id"])

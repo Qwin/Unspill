@@ -3,8 +3,8 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "bgit"
-version = "0.3.0"
+name = "unspill"
+version = "0.4.0"
 description = "An append-only recovery timeline for Git workspaces"
 authors = [{name = "Robert Al-Malak"}]
 readme = "README.md"
@@ -18,11 +18,11 @@ classifiers = [
 ]
 
 [project.scripts]
-bgit = "bgit.cli:main"
+unspill = "unspill.cli:main"
 
 [project.urls]
-Repository = "https://github.com/Qwin/BGit"
-Issues = "https://github.com/Qwin/BGit/issues"
+Repository = "https://github.com/Qwin/Unspill"
+Issues = "https://github.com/Qwin/Unspill/issues"
 
 [tool.setuptools]
-packages = ["bgit"]
+packages = ["unspill"]

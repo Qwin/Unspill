@@ -26,7 +26,7 @@ jobs:
         run: python scripts/build_binary.py
       - uses: actions/upload-artifact@v4
         with:
-          name: bgit-${{ matrix.os }}
+          name: unspill-${{ matrix.os }}
           path: |
             dist/*.zip
             dist/*.sha256

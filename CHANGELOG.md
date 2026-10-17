@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0 — 2026-10-17 (Unspill public alpha)
+
+- Rename the project, Python package, CLI, and standalone downloads to Unspill.
+- Keep existing v1 histories readable, discover legacy default stores per repository,
+  and accept BGIT_HOME as a fallback to UNSPILL_HOME.
+- Refuse ambiguous dual default histories; never move, merge, or erase backups.
+- Include migration instructions and a dated preliminary naming-screening record.
+- Preserve Apache-2.0, authorship, third-party notices, and historical release tags.
+
+Earlier versions below were released under the former name BGit.
+
 ## 0.3.0 — 2026-10-16 (public alpha)
 
 - Descriptive checkpoints with branch, commit subject, changed paths, stash names,

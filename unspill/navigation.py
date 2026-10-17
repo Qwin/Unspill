@@ -8,7 +8,7 @@ import os
 import stat
 
 from .repository import inventory
-from .storage import BGitError, read_json
+from .storage import UnspillError, read_json
 
 
 def safe(value) -> str:
@@ -86,7 +86,7 @@ def live_entries(repo) -> dict:
             item.update(type="file", object=digest, size=signature[1])
         entries[name] = item
     if before != inventory(repo.root):
-        raise BGitError("Repository changed during preview. Pause other writers and retry.")
+        raise UnspillError("Repository changed during preview. Pause other writers and retry.")
     return entries
 
 
@@ -139,7 +139,7 @@ def file_history(repo, path: str) -> list[dict]:
             result.append({**snapshot, "file_state": "absent" if entry is None else entry["type"]})
         previous = entry
     if not found:
-        raise BGitError("That path does not appear in any captured workspace.")
+        raise UnspillError("That path does not appear in any captured workspace.")
     return result
 
 
@@ -147,7 +147,7 @@ def file_diff(repo, snapshot: dict, path: str) -> str:
     target = workspace(snapshot["entries"]).get(path)
     current = workspace(live_entries(repo)).get(path)
     if target is None and current is None:
-        raise BGitError("File is absent in both the checkpoint and current workspace.")
+        raise UnspillError("File is absent in both the checkpoint and current workspace.")
     if any(entry and entry["type"] != "file" for entry in (current, target)):
         return "This path changes type or is a directory/symlink; inspect the restoration preview."
     if any(entry and entry.get("size", 0) > 1024 * 1024 for entry in (current, target)):

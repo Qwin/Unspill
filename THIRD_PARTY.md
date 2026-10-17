@@ -1,10 +1,10 @@
 # Third-party software and provenance
 
-- The implementation in `bgit/`, tests, and demo were written for this project.
+- The implementation in `unspill/`, tests, and demo were written for this project.
   No implementation code has been copied or vendored from another Git tool.
 - Python's standard library supplies hashing, compression, process execution,
   locking, JSON, and filesystem operations. No runtime packages are required.
-- Git is a separately installed executable. BGit invokes it through subprocesses;
+- Git is a separately installed executable. Unspill invokes it through subprocesses;
   this repository does not distribute Git or incorporate its source code.
 - Setuptools is a build-time dependency, not vendored here.
 - The Apache-2.0 license text is from
@@ -20,5 +20,5 @@ Native downloads bundle CPython and use PyInstaller 6.22.0 with its bootloader
 exception. Each archive includes the Python license and license files collected
 from the packaging dependencies (PyInstaller, its hooks, altgraph, and packaging).
 The bootloader exception permits distribution of the application under its own
-license; BGit source remains Apache-2.0. Git is not included in these downloads.
+license; Unspill source remains Apache-2.0. Git is not included in these downloads.
 The binary build script fails if the Python license cannot be found.

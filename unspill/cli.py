@@ -7,13 +7,13 @@ import sys
 
 from . import __version__
 from .repository import Repository, discover
-from .storage import BGitError
+from .storage import UnspillError
 from .navigation import entry_text, file_diff, file_history, find_records, preview, preview_text
 from .wizard import recover_interactively
 
 
 def command_parser(command: str) -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog=f"bgit {command}")
+    parser = argparse.ArgumentParser(prog=f"unspill {command}")
     if command == "snapshot":
         parser.add_argument("-m", "--message", default="Manual snapshot")
     elif command == "timeline":
@@ -51,11 +51,11 @@ def summarize(snapshot: dict) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="BGit — keep your work recoverable before you commit.",
+        description="Unspill — keep your work recoverable before you commit.",
         epilog="Commands: init, snapshot, timeline, history, inspect, diff, restore, recover, undo, resume, verify, git. "
-               "Example: bgit git reset --hard HEAD~1",
+               "Example: unspill git reset --hard HEAD~1",
     )
-    parser.add_argument("--version", action="version", version=f"BGit {__version__}")
+    parser.add_argument("--version", action="version", version=f"Unspill {__version__}")
     parser.add_argument("--repo", type=Path, help="Repository root (also works during interrupted recovery)")
     parser.add_argument("command", nargs="?")
     parser.add_argument("arguments", nargs=argparse.REMAINDER)
@@ -71,7 +71,7 @@ def main(argv: list[str] | None = None) -> int:
         if command == "init":
             command_parser(command).parse_args(options.arguments)
             snapshot = repo.initialize()
-            print(f"BGit initialized. Snapshot: {snapshot['id']}\nStore: {repo.store.path}")
+            print(f"Unspill initialized. Snapshot: {snapshot['id']}\nStore: {repo.store.path}")
             print("All workspace files, including ignored files, are captured locally. No automatic expiry.")
             return 0
         repo.require_initialized()
@@ -111,7 +111,7 @@ def main(argv: list[str] | None = None) -> int:
                 if args.snapshot is None and args.to is None and args.path is None:
                     recover_interactively(repo)
                 elif args.snapshot is None or args.to is None:
-                    raise BGitError("For export, provide both a snapshot and --to DIRECTORY; use recover alone for the picker.")
+                    raise UnspillError("For export, provide both a snapshot and --to DIRECTORY; use recover alone for the picker.")
                 else:
                     repo.recover(args.snapshot, args.to, args.path)
                     print(f"Recovered to {args.to.absolute()}")
@@ -130,11 +130,11 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 return repo.run(options.arguments if command == "git" else [command, *options.arguments], cwd)
         return 0
-    except (BGitError, OSError) as exc:
-        print(f"bgit: {exc}", file=sys.stderr)
+    except (UnspillError, OSError) as exc:
+        print(f"unspill: {exc}", file=sys.stderr)
         return 1
     except KeyboardInterrupt:
-        print("bgit: interrupted; check timeline. If a restore is pending, use --repo PATH resume.", file=sys.stderr)
+        print("unspill: interrupted; check timeline. If a restore is pending, use --repo PATH resume.", file=sys.stderr)
         return 130
 
 

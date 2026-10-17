@@ -15,10 +15,10 @@ class LockUnavailable(Exception):
     """The advisory lock could not be acquired."""
 
 
-def default_home() -> Path:
+def default_home(*, legacy: bool = False) -> Path:
     if os.name == "nt":
-        return Path(os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData/Local"))) / "BGit"
-    return Path.home() / ".local/share/bgit"
+        return Path(os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData/Local"))) / ("BGit" if legacy else "Unspill")
+    return Path.home() / (".local/share/bgit" if legacy else ".local/share/unspill")
 
 
 @contextmanager

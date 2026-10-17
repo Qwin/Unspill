@@ -4,9 +4,9 @@ import subprocess
 import sys
 import unittest
 
-from bgit.platform import windows_path_is_safe
-from bgit.repository import descriptor_matches, fingerprint
-from bgit.storage import BGitError
+from unspill.platform import windows_path_is_safe
+from unspill.repository import descriptor_matches, fingerprint
+from unspill.storage import UnspillError
 from tests.helpers import RepoCase
 
 
@@ -40,12 +40,12 @@ class PlatformRecoveryTests(RepoCase):
         path.chmod(0o644)
 
     def test_lock_is_exclusive_across_processes(self):
-        code = "from pathlib import Path; from bgit.storage import Store; import sys; s=Store(Path(sys.argv[1]));\nwith s.lock(): pass"
+        code = "from pathlib import Path; from unspill.storage import Store; import sys; s=Store(Path(sys.argv[1]));\nwith s.lock(): pass"
         with self.repo.store.lock():
             result = subprocess.run([sys.executable, "-c", code, str(self.repo.store.path)],
                                     capture_output=True, text=True)
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("Another BGit operation", result.stderr)
+        self.assertIn("Another Unspill operation", result.stderr)
 
     def test_permission_failure_inside_lock_is_not_reported_as_contention(self):
         with self.assertRaisesRegex(PermissionError, "actual file failure"):
@@ -61,7 +61,7 @@ class PlatformRecoveryTests(RepoCase):
         subprocess.run(["cmd", "/c", "mklink", "/J", str(junction), str(target)],
                        check=True, capture_output=True)
         try:
-            with self.assertRaisesRegex(BGitError, "reparse"):
+            with self.assertRaisesRegex(UnspillError, "reparse"):
                 self.repo.snapshot("junction")
         finally:
             junction.rmdir()

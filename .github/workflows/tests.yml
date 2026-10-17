@@ -27,4 +27,4 @@ jobs:
       - name: Recovery demonstration
         run: python examples/recovery_demo.py
       - name: Installed command
-        run: bgit --version
+        run: unspill --version

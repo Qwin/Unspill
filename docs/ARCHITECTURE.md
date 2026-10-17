@@ -13,7 +13,7 @@
 
 ## Capture
 
-1. Acquire the external BGit store lock.
+1. Acquire the external Unspill store lock.
 2. Reject unsupported repository layouts and Git locks.
 3. Inventory the complete repository, including `.git`, without following symlinks.
 4. Stream each regular file to a compressed temporary object, hash its original

@@ -12,7 +12,7 @@ import zlib
 from .platform import LockUnavailable, exclusive_lock, sync_dir
 
 
-class BGitError(Exception):
+class UnspillError(Exception):
     """An actionable error suitable for display without a traceback."""
 
 
@@ -38,9 +38,9 @@ def read_json(path: Path) -> dict:
     try:
         value = json.loads(path.read_text())
     except (ValueError, OSError) as exc:
-        raise BGitError(f"Cannot read {path}: {exc}") from exc
+        raise UnspillError(f"Cannot read {path}: {exc}") from exc
     if not isinstance(value, dict):
-        raise BGitError(f"Invalid record: {path}")
+        raise UnspillError(f"Invalid record: {path}")
     return value
 
 
@@ -65,11 +65,11 @@ class Store:
                 with exclusive_lock(stream):
                     yield
             except LockUnavailable as exc:
-                raise BGitError("Another BGit operation is running.") from exc
+                raise UnspillError("Another Unspill operation is running.") from exc
 
     def object_path(self, digest: str) -> Path:
         if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
-            raise BGitError("Invalid object identifier.")
+            raise UnspillError("Invalid object identifier.")
         return self.objects / digest
 
     def put(self, stream) -> str:
@@ -110,8 +110,8 @@ class Store:
                         if output is not None:
                             output.write(data)
                 if not decoder.eof or decoder.unused_data:
-                    raise BGitError(f"Incomplete or trailing object data: {digest}")
+                    raise UnspillError(f"Incomplete or trailing object data: {digest}")
         except (OSError, zlib.error) as exc:
-            raise BGitError(f"Cannot read backup object {digest}: {exc}") from exc
+            raise UnspillError(f"Cannot read backup object {digest}: {exc}") from exc
         if checksum.hexdigest() != digest:
-            raise BGitError(f"Backup checksum mismatch: {digest}")
+            raise UnspillError(f"Backup checksum mismatch: {digest}")

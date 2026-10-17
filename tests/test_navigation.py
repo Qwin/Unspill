@@ -3,9 +3,9 @@ import io
 import json
 from unittest.mock import patch
 
-from bgit.navigation import entry_text, file_diff, file_history, find_records, numbered, preview, safe
-from bgit.storage import BGitError, atomic_json
-from bgit.wizard import recover_interactively
+from unspill.navigation import entry_text, file_diff, file_history, find_records, numbered, preview, safe
+from unspill.storage import UnspillError, atomic_json
+from unspill.wizard import recover_interactively
 from tests.helpers import RepoCase
 
 
@@ -47,7 +47,7 @@ class NavigationTests(RepoCase):
         self.assertEqual(self.repo.load("@1")["id"], self.initial["id"])
         self.repo.snapshot("third")
         self.assertEqual(self.repo.load("@1")["id"], self.initial["id"])
-        with self.assertRaises(BGitError):
+        with self.assertRaises(UnspillError):
             self.repo.load("@999")
 
     def test_search_label_branch_and_filename(self):
@@ -150,5 +150,5 @@ class NavigationTests(RepoCase):
         self.assertEqual((destination / "tracked.txt").read_text(), "original\n")
 
     def test_noninteractive_picker_requires_explicit_export(self):
-        with patch("sys.stdin.isatty", return_value=False), self.assertRaisesRegex(BGitError, "terminal"):
+        with patch("sys.stdin.isatty", return_value=False), self.assertRaisesRegex(UnspillError, "terminal"):
             recover_interactively(self.repo)

@@ -4,12 +4,12 @@ from pathlib import Path
 import sys
 
 from .navigation import entry_text, file_diff, file_history, numbered, preview, preview_text
-from .storage import BGitError
+from .storage import UnspillError
 
 
 def recover_interactively(repo):
     if not sys.stdin.isatty():
-        raise BGitError("Interactive recovery needs a terminal. Use timeline, restore ID --dry-run, or recover ID --to DIRECTORY.")
+        raise UnspillError("Interactive recovery needs a terminal. Use timeline, restore ID --dry-run, or recover ID --to DIRECTORY.")
     repo.require_idle()
     try:
         print("What would you like to recover?\n1. Before my last operation\n2. An earlier version of a file\n3. A branch or stash operation\n4. Browse the full timeline\nEnter/q. Cancel")
@@ -27,7 +27,7 @@ def recover_interactively(repo):
             print("Cancelled. Nothing changed.")
             return
         if not records:
-            raise BGitError("No matching checkpoints. Try browsing the full timeline.")
+            raise UnspillError("No matching checkpoints. Try browsing the full timeline.")
         for snapshot in reversed(records):
             print(entry_text(snapshot) + "\n")
         selector = input("Choose @number (Enter to cancel): ").strip()
@@ -36,7 +36,7 @@ def recover_interactively(repo):
             return
         selected = repo.load(selector)
         if selected["id"] not in {s["id"] for s in records}:
-            raise BGitError("Choose one of the checkpoints shown above.")
+            raise UnspillError("Choose one of the checkpoints shown above.")
         print(preview_text(preview(repo, selected)))
         while True:
             print("\nd. Inspect a file's text differences\nr. Restore the WHOLE checkpoint (saves current state first)\ne. Export to a new folder\nEnter/q. Cancel")

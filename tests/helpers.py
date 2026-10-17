@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from bgit.repository import Repository
+from unspill.repository import Repository
 
 
 class RepoCase(unittest.TestCase):
@@ -20,9 +20,9 @@ class RepoCase(unittest.TestCase):
         clean_env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
         clean_env.update(
             GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull,
-            GIT_AUTHOR_NAME="BGit Test", GIT_AUTHOR_EMAIL="test@example.invalid",
-            GIT_COMMITTER_NAME="BGit Test", GIT_COMMITTER_EMAIL="test@example.invalid",
-            BGIT_HOME=str(self.base / "backups"), GIT_TERMINAL_PROMPT="0",
+            GIT_AUTHOR_NAME="Unspill Test", GIT_AUTHOR_EMAIL="test@example.invalid",
+            GIT_COMMITTER_NAME="Unspill Test", GIT_COMMITTER_EMAIL="test@example.invalid",
+            UNSPILL_HOME=str(self.base / "backups"), GIT_TERMINAL_PROMPT="0",
         )
         self.environment = patch.dict(os.environ, clean_env, clear=True)
         self.environment.start()

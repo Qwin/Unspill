@@ -5,13 +5,13 @@ import subprocess
 import sys
 
 from tests.helpers import RepoCase
-from bgit import __version__
+from unspill import __version__
 
 
 class CliTests(RepoCase):
     def cli(self, *args, cwd=None):
         env = {**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[1])}
-        launcher = [os.environ["BGIT_TEST_EXECUTABLE"]] if "BGIT_TEST_EXECUTABLE" in os.environ else [sys.executable, "-m", "bgit"]
+        launcher = [os.environ["UNSPILL_TEST_EXECUTABLE"]] if "UNSPILL_TEST_EXECUTABLE" in os.environ else [sys.executable, "-m", "unspill"]
         return subprocess.run([*launcher, *args],
                               cwd=cwd or self.root, env=env, capture_output=True, text=True)
 
@@ -59,7 +59,7 @@ class CliTests(RepoCase):
     def test_direct_reset_shorthand(self):
         self.assertEqual(self.cli("reset", "--hard").returncode, 0)
 
-    def test_git_restore_not_confused_with_bgit_restore(self):
+    def test_git_restore_not_confused_with_unspill_restore(self):
         self.write("tracked.txt", "valuable")
         self.assertEqual(self.cli("git", "restore", ".").returncode, 0)
         self.assertEqual((self.root / "tracked.txt").read_text(), "original\n")

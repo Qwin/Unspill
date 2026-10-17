@@ -5,7 +5,7 @@ import tempfile
 import unittest
 import zlib
 
-from bgit.storage import BGitError, Store, atomic_json, read_json
+from unspill.storage import UnspillError, Store, atomic_json, read_json
 
 
 class StorageTests(unittest.TestCase):
@@ -39,36 +39,36 @@ class StorageTests(unittest.TestCase):
     def test_corruption_detected(self):
         digest = self.store.put(io.BytesIO(b"original"))
         self.store.object_path(digest).write_bytes(zlib.compress(b"modified"))
-        with self.assertRaisesRegex(BGitError, "checksum"):
+        with self.assertRaisesRegex(UnspillError, "checksum"):
             self.store.extract(digest, None)
 
     def test_corrupt_existing_object_not_reused(self):
         digest = self.store.put(io.BytesIO(b"original"))
         self.store.object_path(digest).write_bytes(b"broken")
-        with self.assertRaises(BGitError):
+        with self.assertRaises(UnspillError):
             self.store.put(io.BytesIO(b"original"))
 
     def test_truncated_object(self):
         digest = self.store.put(io.BytesIO(b"original"))
         path = self.store.object_path(digest)
         path.write_bytes(path.read_bytes()[:-2])
-        with self.assertRaises(BGitError):
+        with self.assertRaises(UnspillError):
             self.store.extract(digest, None)
 
     def test_trailing_data_rejected(self):
         digest = self.store.put(io.BytesIO(b"original"))
         path = self.store.object_path(digest)
         path.write_bytes(path.read_bytes() + b"junk")
-        with self.assertRaises(BGitError):
+        with self.assertRaises(UnspillError):
             self.store.extract(digest, None)
 
     def test_missing_object(self):
-        with self.assertRaises(BGitError):
+        with self.assertRaises(UnspillError):
             self.store.extract("0" * 64, None)
 
     def test_object_path_traversal(self):
         for digest in ("../outside", "", None, "A" * 64):
-            with self.subTest(digest=digest), self.assertRaises(BGitError):
+            with self.subTest(digest=digest), self.assertRaises(UnspillError):
                 self.store.object_path(digest)
 
     def test_immutable_record_cannot_be_replaced(self):
@@ -88,12 +88,12 @@ class StorageTests(unittest.TestCase):
         path = self.store.path / "record.json"
         for content in ("[1]", "broken"):
             path.write_text(content)
-            with self.assertRaises(BGitError):
+            with self.assertRaises(UnspillError):
                 read_json(path)
 
     def test_exclusive_lock(self):
         with self.store.lock():
-            with self.assertRaisesRegex(BGitError, "Another"):
+            with self.assertRaisesRegex(UnspillError, "Another"):
                 with self.store.lock():
                     self.fail("Lock unexpectedly acquired")
 
