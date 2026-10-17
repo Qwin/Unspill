@@ -72,8 +72,7 @@ includes the full captured context and all workspace paths.
 
 Search matches labels and recorded Git context: branch, commit subject, changed
 paths and stash names. It does not search file contents. Detached HEAD and unborn
-branches have explicit labels. Older snapshots without descriptive metadata remain
-recoverable and are labeled as legacy; Unspill does not invent missing context.
+branches have explicit labels.
 
 Operation outcomes are appended separately so snapshot records stay immutable.
 They distinguish completed, failed, and stopped-on-conflicts operations. If a

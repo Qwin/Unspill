@@ -7,7 +7,7 @@ history, then preview and recover it.
 **Public alpha for Windows, macOS, and Linux.** Created by Robert Al-Malak
 ([Qwin](https://github.com/Qwin)). [Apache-2.0](LICENSE).
 
-An independent recovery tool for Git® workspaces. Previously released as BGit. [Upgrading an existing installation](docs/MIGRATING.md).
+An independent recovery tool for Git® workspaces.
 
 ## Install
 
@@ -60,8 +60,7 @@ Illustrative timeline entry:
 ```
 
 The checkpoint is the state **before** the named action. `@18` is a stable local
-choice so you do not need to copy a long ID. Older snapshots remain usable even
-when they lack the new descriptions.
+choice so you do not need to copy a long ID. Use the full snapshot ID when you need a permanent reference in a script.
 
 ## Recover your work
 

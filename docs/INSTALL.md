@@ -77,8 +77,6 @@ installing the package. On Windows, the Python launcher is commonly `py`.
 
 ## Updating
 
-Upgrading from the former BGit releases? Follow the [migration guide](MIGRATING.md)
-to keep using your existing history.
 
 
 Select a reviewed release tag, then reinstall that version:
@@ -89,5 +87,3 @@ pipx install --force "git+https://github.com/Qwin/Unspill.git@v0.4.0-alpha.1"
 
 For a standalone installation, replace the executable with the new release while
 Unspill is not running. Backups live separately and are not removed by installation.
-Snapshots from v0.1 remain readable; historical snapshots without context show a
-legacy label instead of fabricated branch or commit information.

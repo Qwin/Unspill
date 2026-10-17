@@ -1,7 +1,5 @@
 # Storage and protection boundaries
 
-For legacy histories and `BGIT_HOME` compatibility, see [migration](MIGRATING.md).
-
 Default location for new repositories:
 
 ```text

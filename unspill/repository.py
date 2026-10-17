@@ -111,19 +111,7 @@ class Repository:
     def __init__(self, root: Path, home: Path | None = None):
         self.root = root.resolve()
         identity = hashlib.sha256(os.fsencode(str(self.root))).hexdigest()
-        configured = home or os.environ.get("UNSPILL_HOME") or os.environ.get("BGIT_HOME")
-        if configured:
-            base = Path(configured).expanduser().resolve()
-        else:
-            base = default_home().resolve()
-            legacy = default_home(legacy=True).resolve()
-            current_store = base / "repositories" / identity
-            legacy_store = legacy / "repositories" / identity
-            if current_store.exists() and legacy_store.exists():
-                raise UnspillError("Two backup histories found. Set UNSPILL_HOME to the intended store; histories are never merged automatically.")
-            if legacy_store.exists():
-                base = legacy
-
+        base = Path(home or os.environ.get("UNSPILL_HOME") or default_home()).expanduser().resolve()
         if base == self.root or base.is_relative_to(self.root) or self.root.is_relative_to(base):
             raise UnspillError("UNSPILL_HOME must be outside the repository, and cannot contain it.")
         self.store = Store(base / "repositories" / identity)

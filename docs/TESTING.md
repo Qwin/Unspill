@@ -3,14 +3,14 @@
 Run `python3 -m unittest discover -v` from the repository root with Python 3.11+.
 No test dependencies, external accounts, credentials, or network are required.
 
-The suite includes 122 tests across these layers:
+The suite includes 118 tests across these layers:
 
 | Layer | Coverage |
 | --- | --- |
-| Rename compatibility | Legacy stores and environment settings, precedence, ambiguity rejection, unchanged historical manifests, recovery after upgrade |
+| Store configuration | Unspill-only default locations, setting precedence, and independence from former environment settings |
 | Storage unit tests | Binary/empty objects, deduplication, compression, checksum failures, truncation, trailing bytes, path validation, immutable writes, exclusive locks, cleanup after failure |
 | Real-Git integration | Hard reset, partial staging, clean including ignored files, stash clear followed by pruning, branch deletion, detached HEAD, rebase, conflict index state, reversible restore, exports, file types and permissions |
-| Navigation and guided recovery | Descriptive context, stable selectors, search, legacy snapshots, previews, file history, text diffs, cancellation, export and restoration |
+| Navigation and guided recovery | Descriptive context, stable selectors, search, missing snapshot context, previews, file history, text diffs, cancellation, export and restoration |
 | CLI subprocess tests | Help, version, JSON timeline, named snapshots, preview, reset/undo, command ambiguity, exit codes, verification, export, explicit roots, relative paths |
 
 Fault injection covers failed object writes, concurrent file creation, corrupt
